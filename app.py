@@ -3,19 +3,29 @@ from pymongo import MongoClient
 import random
 import string
 from datetime import datetime, timedelta
+from telegram import Bot
 
 app = Flask(__name__)
-app.secret_key = 'sidopkey'
+app.secret_key = 'your_secret_key'
 
 # MongoDB Setup
-client = MongoClient('mongodb://localhost:27017/')
-db = client['user_db']
-users_collection = db['users']
+client = MongoClient('mongodb+srv://vivekrajroy705:o6X6gvdM84G0nG3x@cluster0.djx5h.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+db = client['site_userdb']
+users_collection = db['Siteusers']
 codes_collection = db['verification_codes']
+
+# Telegram Bot Setup (python-telegram-bot)
+BOT_TOKEN = '6658351224:AAHdlDUfEOmK4DHzoB_Pj2oUgZVEDUO9zLI'  # Replace with your bot token
+bot = Bot(token=BOT_TOKEN)
 
 # Generate random verification code
 def generate_code(length=6):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+# Send verification code using Telegram bot
+def send_verification_code(username, telegram_id, code):
+    message = f"Hello {username},\nYour verification code is: {code}. This code will expire in 2 minutes."
+    bot.send_message(chat_id=telegram_id, text=message)
 
 # Route for login page
 @app.route('/login', methods=['GET', 'POST'])
@@ -70,6 +80,7 @@ def send_code():
     user = users_collection.find_one({'username': username})
     
     if user:
+        telegram_id = user['telegram_id']  # The Telegram ID must be stored when registering the user
         code = generate_code()
         expiry_time = datetime.now() + timedelta(minutes=2)
         
@@ -80,8 +91,10 @@ def send_code():
             upsert=True
         )
         
-        # Send code to user (you can integrate this with a Telegram bot or email service)
-        flash(f'Your verification code has been sent to {username}.', 'info')
+        # Send verification code via Telegram bot
+        send_verification_code(username, telegram_id, code)
+        
+        flash(f'A verification code has been sent to your Telegram account.', 'info')
     else:
         flash('Username not found.', 'danger')
     
